@@ -3,29 +3,36 @@
 
 set -euo pipefail # ключ -e завершает работу, если есть ошибка; -u рассматривает не объявленные переменные как ошибку; -o pipefail если хоть один конвейер упадёт, вся цепочка вернёт ошибку
 declare -r TESTS_BIN_FILES_PATH="./generated_test"
-declare -ri TEST_FILE_SIZE=1024 # размер тестового файла в байтах
 declare -r AMBIENT_TEMPERATURE="${1:-temperature_argument_not_set}" # Окружающая температура
 declare -r UART_TEST_LOG_FILE="UART_test_$AMBIENT_TEMPERATURE.tsv"
 declare -r TMP_INPUT_UART_FILE="temp_UART_output.bin"
 declare -r TMP_EXPECTED_UART_FILE="temp_UART_expected.bin"
-declare -Ar TESTED_WORDS=(
+declare -rA TESTED_WORDS=(
     [cs5]=$((2#10101))
     [cs6]=$((2#101010))
     [cs7]=$((2#1010101))
     [cs8]=$((2#10101010))
 )
 declare -r OPEN_PORT_TIME="0.2"
-declare -r READ_TIMEOUT="5"
-# Доступные параметры для CH340G
-declare -ri baud_rates=(115200)
-declare -r character_size_stty=(cs5 cs6 cs7 cs8)
-declare -Ar character_sizes=(
+declare -r READ_TIMEOUT="60"
+
+# Доступные параметры для устройства UART
+# Скорость и соответствующий ему размер тестового файла в байтах. При такой конфигурации тест будет длиться примерно 40 минут
+declare -rA baud_rates_AND_test_file_size=(
+    [1200]=1024
+    [9600]=8192
+    [38400]=65536
+    [115200]=131072
+    [921600]=262144
+)
+declare -ra character_size_stty=(cs5 cs6 cs7 cs8)
+declare -rA character_sizes=(
     [cs5]=5
     [cs6]=6
     [cs7]=7
     [cs8]=8
 )
-declare -r stop_bits_stty=("-cstopb" "cstopb")
+declare -ar stop_bits_stty=("-cstopb" "cstopb")
 declare -Ar stop_bits=(
     [-cstopb]=1
     [cstopb]=2
@@ -37,10 +44,13 @@ declare -Ar parity_modes=(
     ["odd"]="parenb parodd"
 )
 
+
+
 # Проверяем, сколько обнаружено USB - UART преобразователей
 find /dev/ -maxdepth 1 -name "ttyUSB*"
 
 declare -a paths_USB_UART
+# 2>/dev/null - перенаправляем поток с ошибками в "никуда"
 mapfile -t paths_USB_UART < <(find /dev/ -maxdepth 1 \( -name 'ttyUSB*' -o -name 'ttyACM*' \) 2>/dev/null) # преобразователь определяется в системе иногда как ttyUSB, а иногда как ttyACM
 declare -ri COUNT_USB_UART=${#paths_USB_UART[@]}
 
@@ -63,6 +73,8 @@ else
     path_USB_UART_2="${paths_USB_UART[1]}"
 fi
 
+
+
 transmit_and_receive() {
     local receive_port=$1
     local transmit_port=$2
@@ -71,26 +83,59 @@ transmit_and_receive() {
     local reader_pid
 
     expected_size=$(wc -c < "$expected_file")
-    : > "$TMP_INPUT_UART_FILE"
+    : > "$TMP_INPUT_UART_FILE" # очищаем содержимое файла, или создаём пустой заново
 
+    # dd - побайтово копирует данные; if - input file; of - output file; bs - block size; count - кол-во ситаемой информации; status=none - не выводить статистику; & - запустить чтение в фоне
     timeout "$READ_TIMEOUT" dd if="$receive_port" of="$TMP_INPUT_UART_FILE" bs=1 count="$expected_size" status=none &
-    reader_pid=$!
+    reader_pid=$! # сохраняем PID (идентификатор процесса) последней запущенной фоновой команды (&)
     sleep "$OPEN_PORT_TIME" # Даем порту время открыться
-    cat "$expected_file" > "$transmit_port"
+    cat "$expected_file" > "$transmit_port" # отправляем тестовую в UART
     wait "$reader_pid"
 }
 
+# проверяем, надо ли генерировать бинарные файлы с тестами
 test_file_needs_generation() {
     local test_file=$1
+    local expected_size=$2
     local actual_size
 
+    # если файл не обнаружен, возвращаем 0
     if ! [ -f "$test_file" ]; then
         return 0
     fi
 
-    actual_size=$(wc -c < "$test_file")
-    [ "$actual_size" -ne "$TEST_FILE_SIZE" ]
+    actual_size=$(wc -c < "$test_file") # подсчитываем количество байтов
+    [ "$actual_size" -ne "$expected_size" ] # если размер файла в переменной $actual_size не равен ожидаемому размеру, возвращаем 0, иначе возвращаем 1
 }
+
+get_test_file_path() {
+    local baud_rate=$1
+    local character_size_key=$2
+
+    printf "%s/test_%s_%s.bin" "$TESTS_BIN_FILES_PATH" "$baud_rate" "$character_size_key"
+}
+
+generate_test_file() {
+    local character_size_key=$1
+    local test_file_size=$2
+    local test_file=$3
+
+    case "$character_size_key" in
+        cs5)
+            od -An -v -tu1 -N "$test_file_size" /dev/urandom | awk '{for(i=1;i<=NF;i++) printf "%c", $i%32}' > "$test_file"
+            ;;
+        cs6)
+            od -An -v -tu1 -N "$test_file_size" /dev/urandom | awk '{for(i=1;i<=NF;i++) printf "%c", $i%64}' > "$test_file"
+            ;;
+        cs7)
+            od -An -v -tu1 -N "$test_file_size" /dev/urandom | awk '{for(i=1;i<=NF;i++) printf "%c", $i%128}' > "$test_file"
+            ;;
+        cs8)
+            dd if=/dev/urandom of="$test_file" bs=1 count="$test_file_size" status=none
+            ;;
+    esac
+}
+
 
 
 # Опробование
@@ -128,22 +173,18 @@ if ! [ -d "$TESTS_BIN_FILES_PATH" ]; then
     echo -e "\nПапка $TESTS_BIN_FILES_PATH не существует. Создаю её:"
     mkdir -p "$TESTS_BIN_FILES_PATH"
 fi
-if test_file_needs_generation "$TESTS_BIN_FILES_PATH/test_cs5.bin"; then
-    echo "Файл для теста CS5 не существует или имеет неправильный размер. Генерирую тест"
-    od -An -v -tu1 -N $TEST_FILE_SIZE /dev/urandom | awk '{for(i=1;i<=NF;i++) printf "%c", $i%32}' > "$TESTS_BIN_FILES_PATH/test_cs5.bin"
-fi
-if test_file_needs_generation "$TESTS_BIN_FILES_PATH/test_cs6.bin"; then
-    echo "Файл для теста CS6 не существует или имеет неправильный размер. Генерирую тест"
-    od -An -v -tu1 -N $TEST_FILE_SIZE /dev/urandom | awk '{for(i=1;i<=NF;i++) printf "%c", $i%64}' > "$TESTS_BIN_FILES_PATH/test_cs6.bin"
-fi
-if test_file_needs_generation "$TESTS_BIN_FILES_PATH/test_cs7.bin"; then
-    echo "Файл для теста CS7 не существует или имеет неправильный размер. Генерирую тест"
-    od -An -v -tu1 -N $TEST_FILE_SIZE /dev/urandom | awk '{for(i=1;i<=NF;i++) printf "%c", $i%128}' > "$TESTS_BIN_FILES_PATH/test_cs7.bin"
-fi
-if test_file_needs_generation "$TESTS_BIN_FILES_PATH/test_cs8.bin"; then
-    echo "Файл для теста CS8 не существует или имеет неправильный размер. Генерирую тест"
-    dd if=/dev/urandom of="$TESTS_BIN_FILES_PATH/test_cs8.bin" bs=1 count=$TEST_FILE_SIZE status=none
-fi
+for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do
+    test_file_size=${baud_rates_AND_test_file_size[$baud_rate]}
+
+    for character_size_key in "${!character_sizes[@]}"; do
+        test_file=$(get_test_file_path "$baud_rate" "$character_size_key")
+
+        if test_file_needs_generation "$test_file" "$test_file_size"; then
+            echo "Файл $test_file не существует или имеет неправильный размер. Генерирую тест"
+            generate_test_file "$character_size_key" "$test_file_size" "$test_file"
+        fi
+    done
+done
 
 
 
@@ -168,9 +209,13 @@ printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
 
 declare test_result # метка PASS или FAIL
 declare -i is_test_valid=1  # флаг статуса прохождения теста
-for baud_rate in "${baud_rates[@]}"; do
+for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do
+    test_file_size=${baud_rates_AND_test_file_size[$baud_rate]}
+
     for stop_bits_key in "${!stop_bits[@]}"; do
         for character_size_key in "${!character_sizes[@]}"; do
+            test_file=$(get_test_file_path "$baud_rate" "$character_size_key")
+
             for parity_mode_key in "${!parity_modes[@]}"; do
                 run_test() {
                     local path_USB_UART_1=$1
@@ -182,15 +227,15 @@ for baud_rate in "${baud_rates[@]}"; do
                     local test_text_type=$7
                     local expected_file
                     local -a parity_options
-                    read -r -a parity_options <<< "${parity_modes[$parity_mode_key]}"
+                    read -r -a parity_options <<< "${parity_modes[$parity_mode_key]}" # превращаем строку parity_modes в массив, для того, чтобы потом безопасно передать аргументы в stty
 
                     stty -F "$path_USB_UART_1" raw "$baud_rate" "$character_size_key" "${parity_options[@]}" "$stop_bits_key" "$flow_control" -echo inpck -parmrk ignpar
                     stty -F "$path_USB_UART_2" raw "$baud_rate" "$character_size_key" "${parity_options[@]}" "$stop_bits_key" "$flow_control" -echo inpck -parmrk ignpar
 
                     if [ "$test_payload_type" = "file" ]; then
-                        expected_file=$test_text_sequence
+                        expected_file=$test_text_sequence # прописываем путь к бинарному файлу с тестами
                     else
-                        printf "%s" "$test_text_sequence" > "$TMP_EXPECTED_UART_FILE"
+                        printf "%s" "$test_text_sequence" > "$TMP_EXPECTED_UART_FILE" # записываем тестовую бинарную последовательность в TMP_EXPECTED_UART_FILE
                         expected_file=$TMP_EXPECTED_UART_FILE
                     fi
 
@@ -217,8 +262,8 @@ for baud_rate in "${baud_rates[@]}"; do
 
                 run_test "$path_USB_UART_1" "$path_USB_UART_2" "$BOARD_NAME_1" "$BOARD_NAME_2" "${TESTED_WORDS[$character_size_key]}" "word" "Слово"
                 run_test "$path_USB_UART_2" "$path_USB_UART_1" "$BOARD_NAME_2" "$BOARD_NAME_1" "${TESTED_WORDS[$character_size_key]}" "word" "Слово"
-                run_test "$path_USB_UART_1" "$path_USB_UART_2" "$BOARD_NAME_1" "$BOARD_NAME_2" "$TESTS_BIN_FILES_PATH/test_$character_size_key.bin" "file" "Текст $TEST_FILE_SIZE байт"
-                run_test "$path_USB_UART_2" "$path_USB_UART_1" "$BOARD_NAME_2" "$BOARD_NAME_1" "$TESTS_BIN_FILES_PATH/test_$character_size_key.bin" "file" "Текст $TEST_FILE_SIZE байт"
+                run_test "$path_USB_UART_1" "$path_USB_UART_2" "$BOARD_NAME_1" "$BOARD_NAME_2" "$test_file" "file" "Текст $test_file_size байт"
+                run_test "$path_USB_UART_2" "$path_USB_UART_1" "$BOARD_NAME_2" "$BOARD_NAME_1" "$test_file" "file" "Текст $test_file_size байт"
 
             done
         done
