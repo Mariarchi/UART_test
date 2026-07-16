@@ -1,5 +1,5 @@
 #!/bin/bash
-# Первый параметр $1 - это температура, $2 - это номер первой подключённой платы, $3 - это номер второй подключённой платы
+# $1 - температура, $2 - номер первой подключённой платы, $3 - номер второй подключённой платы; $4 - путь для stty для 1-й платы (ttyUSB0, ttyACM1 и пр.); $5 - путь для stty для 2-й платы
 
 set -euo pipefail # ключ -e завершает работу, если есть ошибка; -u рассматривает не объявленные переменные как ошибку; -o pipefail если хоть один конвейер упадёт, вся цепочка вернёт ошибку
 declare -r TESTS_BIN_FILES_PATH="./generated_test"
@@ -53,24 +53,41 @@ declare -a paths_USB_UART
 # 2>/dev/null - перенаправляем поток с ошибками в "никуда"
 mapfile -t paths_USB_UART < <(find /dev/ -maxdepth 1 \( -name 'ttyUSB*' -o -name 'ttyACM*' \) 2>/dev/null) # преобразователь определяется в системе иногда как ttyUSB, а иногда как ttyACM
 declare -ri COUNT_USB_UART=${#paths_USB_UART[@]}
-
-if [ "$COUNT_USB_UART" -eq 0 ]; then
-    echo "Преобразователей USB - UART не обнаружено. Прекращаю свою работу"
-    exit 1
-elif [ "$COUNT_USB_UART" -gt 2 ]; then
-    echo "Преобразователей USB - UART более 2-х штук. Прекращаю свою работу"
-    exit 1
-else
-    echo "Количество преобразователей: $COUNT_USB_UART"
-fi
-
 declare path_USB_UART_1 path_USB_UART_2
-if [ "$COUNT_USB_UART" -eq 1 ]; then
-    path_USB_UART_1="${paths_USB_UART[0]}"
-    path_USB_UART_2="${paths_USB_UART[0]}"
+
+if [ $# -le 3 ]; then
+    if [ "$COUNT_USB_UART" -eq 0 ]; then
+        echo "Преобразователей USB - UART не обнаружено. Прекращаю свою работу"
+        exit 1
+    elif [ "$COUNT_USB_UART" -gt 2 ]; then
+        echo "Преобразователей USB - UART более 2-х штук. Прекращаю свою работу"
+        exit 1
+    else
+        echo "Количество преобразователей: $COUNT_USB_UART"
+    fi
+
+    if [ "$COUNT_USB_UART" -eq 1 ]; then
+        path_USB_UART_1="${paths_USB_UART[0]}"
+        path_USB_UART_2="${paths_USB_UART[0]}"
+    else
+        path_USB_UART_1="${paths_USB_UART[0]}"
+        path_USB_UART_2="${paths_USB_UART[1]}"
+    fi
+elif [ $# -eq 5 ]; then
+    path_USB_UART_1="/dev/$4"
+    path_USB_UART_2="/dev/$5"
+
+    if [[ ! -e "$path_USB_UART_1" ]]; then
+        echo "Ошибка: $path_USB_UART_1 не найден"
+        exit 1
+    fi
+    if [[ ! -e "$path_USB_UART_2" ]]; then
+        echo "Ошибка: $path_USB_UART_2 не найден"
+        exit 1
+    fi
 else
-    path_USB_UART_1="${paths_USB_UART[0]}"
-    path_USB_UART_2="${paths_USB_UART[1]}"
+    echo "Количество параметров введено неверно, их должно быть от 0 до 3 либо 5. Прекращаю свою работу"
+    exit 1
 fi
 
 
@@ -173,8 +190,7 @@ if ! [ -d "$TESTS_BIN_FILES_PATH" ]; then
     echo -e "\nПапка $TESTS_BIN_FILES_PATH не существует. Создаю её:"
     mkdir -p "$TESTS_BIN_FILES_PATH"
 fi
-for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do
-    test_file_size=${baud_rates_AND_test_file_size[$baud_rate]}
+for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${baud_rates_AND_test_file_size[$baud_rate]}
 
     for character_size_key in "${!character_sizes[@]}"; do
         test_file=$(get_test_file_path "$baud_rate" "$character_size_key")
@@ -209,9 +225,7 @@ printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
 
 declare test_result # метка PASS или FAIL
 declare -i is_test_valid=1  # флаг статуса прохождения теста
-for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do
-    test_file_size=${baud_rates_AND_test_file_size[$baud_rate]}
-
+for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${baud_rates_AND_test_file_size[$baud_rate]}
     for stop_bits_key in "${!stop_bits[@]}"; do
         for character_size_key in "${!character_sizes[@]}"; do
             test_file=$(get_test_file_path "$baud_rate" "$character_size_key")
