@@ -17,7 +17,7 @@ declare -rA TESTED_WORDS=(
     [cs8]=$((2#10101010))
 )
 declare -r OPEN_PORT_TIME="0.2"
-declare -r READ_TIMEOUT="60"
+declare -r READ_TIMEOUT="30"
 
 # Доступные параметры для устройства UART
 # Скорость и соответствующий ему размер тестового файла в байтах. При такой конфигурации тест будет длиться примерно 40-50 минут
@@ -50,7 +50,7 @@ declare -Ar parity_modes=(
 
 
 # Проверяем, сколько обнаружено USB - UART преобразователей
-find /dev/ -maxdepth 1 -name "ttyUSB*"
+find /dev/ -maxdepth 1 \( -name 'ttyUSB*' -o -name 'ttyACM*' \)
 
 declare -a paths_USB_UART
 # 2>/dev/null - перенаправляем поток с ошибками в "никуда"
@@ -258,6 +258,7 @@ for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${bau
                     else
                         test_result="FAIL ❌"
                         is_test_valid=0
+                        echo -e "\e[11;500]\a"
                     fi
 
                     printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
