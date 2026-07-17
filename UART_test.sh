@@ -3,13 +3,13 @@
 # $1 - температура, $2 - номер первой подключённой платы, $3 - номер второй подключённой платы; $4 - путь для stty для 1-й платы (ttyUSB0, ttyACM1 и пр.); $5 - путь для stty для 2-й платы
 
 set -euo pipefail # ключ -e завершает работу, если есть ошибка; -u рассматривает не объявленные переменные как ошибку; -o pipefail если хоть один конвейер упадёт, вся цепочка вернёт ошибку
-declare -r TESTS_BIN_FILES_PATH="./generated_test"
 declare -r AMBIENT_TEMPERATURE="${1:-temperatureArgumentNotSet}" # Окружающая температура
 declare -r BOARD_NAME_1="${2:-notSet1}" # Номер 1-й платы. Если $2 задан и не пустой → берётся $2; если не задан или пустой → подставляется "X"
 declare -r BOARD_NAME_2="${3:-notSet2}" # Номер 2-й платы
 declare -r UART_TEST_LOG_FILE="test_report_${AMBIENT_TEMPERATURE}_UART${BOARD_NAME_1}_UART${BOARD_NAME_2}.tsv"
-declare -r TMP_INPUT_UART_FILE="temp_UART_output.bin"
-declare -r TMP_EXPECTED_UART_FILE="temp_UART_expected.bin"
+declare -r TESTS_BIN_FILES_PATH="./generated_test_${AMBIENT_TEMPERATURE}_UART${BOARD_NAME_1}_UART${BOARD_NAME_2}"
+declare -r TMP_INPUT_UART_FILE="temp_UART_output_${AMBIENT_TEMPERATURE}_UART${BOARD_NAME_1}_UART${BOARD_NAME_2}.bin"
+declare -r TMP_EXPECTED_UART_FILE="temp_UART_expected_${AMBIENT_TEMPERATURE}_UART${BOARD_NAME_1}_UART${BOARD_NAME_2}.bin"
 declare -rA TESTED_WORDS=(
     [cs5]=$((2#10101))
     [cs6]=$((2#101010))
