@@ -4,8 +4,10 @@
 
 set -euo pipefail # ключ -e завершает работу, если есть ошибка; -u рассматривает не объявленные переменные как ошибку; -o pipefail если хоть один конвейер упадёт, вся цепочка вернёт ошибку
 declare -r TESTS_BIN_FILES_PATH="./generated_test"
-declare -r AMBIENT_TEMPERATURE="${1:-temperature_argument_not_set}" # Окружающая температура
-declare -r UART_TEST_LOG_FILE="UART_test_$AMBIENT_TEMPERATURE.tsv"
+declare -r AMBIENT_TEMPERATURE="${1:-temperatureArgumentNotSet}" # Окружающая температура
+declare -r BOARD_NAME_1="${2:-notSet1}" # Номер 1-й платы. Если $2 задан и не пустой → берётся $2; если не задан или пустой → подставляется "X"
+declare -r BOARD_NAME_2="${3:-notSet2}" # Номер 2-й платы
+declare -r UART_TEST_LOG_FILE="test_report_${AMBIENT_TEMPERATURE}_UART№${BOARD_NAME_1}_UART№${BOARD_NAME_2}.tsv"
 declare -r TMP_INPUT_UART_FILE="temp_UART_output.bin"
 declare -r TMP_EXPECTED_UART_FILE="temp_UART_expected.bin"
 declare -rA TESTED_WORDS=(
@@ -206,9 +208,6 @@ done
 
 
 # Проведение тестов
-declare BOARD_NAME_1="${2:-X}" # Номер 1-й платы. Если $2 задан и не пустой → берётся $2; если не задан или пустой → подставляется "X"
-declare BOARD_NAME_2="${3:-X}" # Номер 2-й платы
-
 printf "" > "$UART_TEST_LOG_FILE" # Стираем старую информацию из лог-файла
 printf "\n%s\n" "Запускаем тесты с различными комбинациями параметров UART"
 printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
@@ -235,8 +234,8 @@ for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${bau
                 run_test() {
                     local path_USB_UART_1=$1
                     local path_USB_UART_2=$2
-                    local BOARD_NAME_1=$3
-                    local BOARD_NAME_2=$4
+                    local board_name_1=$3
+                    local board_name_2=$4
                     local test_text_sequence=$5
                     local test_payload_type=$6
                     local test_text_type=$7
@@ -263,8 +262,8 @@ for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${bau
 
                     printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
                         "$AMBIENT_TEMPERATURE °C" \
-                        "№ $BOARD_NAME_2" \
-                        "№ $BOARD_NAME_1" \
+                        "№ $board_name_2" \
+                        "№ $board_name_1" \
                         "$test_text_type"  \
                         "$baud_rate бод" \
                         "${character_sizes[$character_size_key]} бит" \

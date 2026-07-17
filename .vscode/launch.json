@@ -1,40 +1,88 @@
 {
-    // Используйте IntelliSense, чтобы узнать о возможных атрибутах.
-    // Наведите указатель мыши, чтобы просмотреть описания существующих атрибутов.
-    // Для получения дополнительной информации посетите: https://go.microsoft.com/fwlink/?linkid=830387
+    // Конфигурации рассчитаны на расширение VS Code "Bash Debug".
     "version": "0.2.0",
     "configurations": [
-        
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (type in script name)",
+            "name": "Bash: текущий файл",
+            "program": "${file}",
             "cwd": "${workspaceFolder}",
-            "program": "${command:AskForScriptName}",
+            "pathBash": "/bin/bash",
+            "terminalKind": "integrated",
             "args": []
         },
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (select script from list of sh files)",
+            "name": "UART_test.sh: автоопределение портов",
+            "program": "${workspaceFolder}/UART_test.sh",
             "cwd": "${workspaceFolder}",
-            "program": "${command:SelectScriptName}",
+            "pathBash": "/bin/bash",
+            "terminalKind": "integrated",
             "args": []
         },
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (hardcoded script name)",
+            "name": "UART_test.sh: температура и номера плат",
+            "program": "${workspaceFolder}/UART_test.sh",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/path/to/script.sh",
-            "args": []
+            "pathBash": "/bin/bash",
+            "terminalKind": "integrated",
+            "args": [
+                "${input:ambientTemperature}",
+                "${input:boardName1}",
+                "${input:boardName2}"
+            ]
         },
-
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (simplest configuration)",
-            "program": "${file}"
+            "name": "UART_test.sh: вручную указать порты",
+            "program": "${workspaceFolder}/UART_test.sh",
+            "cwd": "${workspaceFolder}",
+            "pathBash": "/bin/bash",
+            "terminalKind": "integrated",
+            "args": [
+                "${input:ambientTemperature}",
+                "${input:boardName1}",
+                "${input:boardName2}",
+                "${input:uartPort1}",
+                "${input:uartPort2}"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "ambientTemperature",
+            "type": "promptString",
+            "description": "Температура окружающей среды",
+            "default": "25"
+        },
+        {
+            "id": "boardName1",
+            "type": "promptString",
+            "description": "Номер первой платы",
+            "default": "1"
+        },
+        {
+            "id": "boardName2",
+            "type": "promptString",
+            "description": "Номер второй платы",
+            "default": "2"
+        },
+        {
+            "id": "uartPort1",
+            "type": "promptString",
+            "description": "Порт первой платы без /dev/",
+            "default": "ttyUSB0"
+        },
+        {
+            "id": "uartPort2",
+            "type": "promptString",
+            "description": "Порт второй платы без /dev/",
+            "default": "ttyUSB1"
         }
     ]
 }
