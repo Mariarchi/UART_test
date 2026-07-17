@@ -26,7 +26,7 @@ declare -rA baud_rates_AND_test_file_size=(
     [9600]=8192
     [38400]=65536
     [115200]=131072
-    [921600]=262144
+    [230400]=262144
 )
 declare -ra character_size_stty=(cs5 cs6 cs7 cs8)
 declare -rA character_sizes=(
