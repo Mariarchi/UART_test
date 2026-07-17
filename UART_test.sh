@@ -7,7 +7,7 @@ declare -r TESTS_BIN_FILES_PATH="./generated_test"
 declare -r AMBIENT_TEMPERATURE="${1:-temperatureArgumentNotSet}" # Окружающая температура
 declare -r BOARD_NAME_1="${2:-notSet1}" # Номер 1-й платы. Если $2 задан и не пустой → берётся $2; если не задан или пустой → подставляется "X"
 declare -r BOARD_NAME_2="${3:-notSet2}" # Номер 2-й платы
-declare -r UART_TEST_LOG_FILE="test_report_${AMBIENT_TEMPERATURE}_UART№${BOARD_NAME_1}_UART№${BOARD_NAME_2}.tsv"
+declare -r UART_TEST_LOG_FILE="test_report_${AMBIENT_TEMPERATURE}_UART${BOARD_NAME_1}_UART${BOARD_NAME_2}.tsv"
 declare -r TMP_INPUT_UART_FILE="temp_UART_output.bin"
 declare -r TMP_EXPECTED_UART_FILE="temp_UART_expected.bin"
 declare -rA TESTED_WORDS=(
@@ -20,7 +20,7 @@ declare -r OPEN_PORT_TIME="0.2"
 declare -r READ_TIMEOUT="60"
 
 # Доступные параметры для устройства UART
-# Скорость и соответствующий ему размер тестового файла в байтах. При такой конфигурации тест будет длиться примерно 47 минут
+# Скорость и соответствующий ему размер тестового файла в байтах. При такой конфигурации тест будет длиться примерно 40-50 минут
 declare -rA baud_rates_AND_test_file_size=(
     [1200]=1024
     [9600]=8192
