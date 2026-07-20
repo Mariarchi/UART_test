@@ -19,6 +19,11 @@ declare -rA TESTED_WORDS=(
 declare -r OPEN_PORT_TIME="0.2"
 declare -r READ_TIMEOUT="30"
 declare -r EMAIL="${WORK_EMAIL:-}" # электронная почта для отпрапвки готовых отчётов
+# Создаём папку для тестов
+if ! [ -d "$TESTS_BIN_FILES_PATH" ]; then
+    echo -e "\nПапка $TESTS_BIN_FILES_PATH не существует. Создаю её:"
+    mkdir -p "$TESTS_BIN_FILES_PATH"
+fi
 
 # Доступные параметры для устройства UART
 # Скорость и соответствующий ему размер тестового файла в байтах. При такой конфигурации тест будет длиться примерно 40-50 минут
@@ -190,10 +195,6 @@ printf "Полученные данные: %s \n" "$(cat "$TMP_INPUT_UART_FILE")
 
 
 # Проверяем, есть ли у нас сгенерированные тесты, если нет - генерируем их
-if ! [ -d "$TESTS_BIN_FILES_PATH" ]; then
-    echo -e "\nПапка $TESTS_BIN_FILES_PATH не существует. Создаю её:"
-    mkdir -p "$TESTS_BIN_FILES_PATH"
-fi
 for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${baud_rates_AND_test_file_size[$baud_rate]}
 
     for character_size_key in "${!character_sizes[@]}"; do
