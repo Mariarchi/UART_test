@@ -18,6 +18,7 @@ declare -rA TESTED_WORDS=(
 )
 declare -r OPEN_PORT_TIME="0.2"
 declare -r READ_TIMEOUT="30"
+declare -r EMAIL="${WORK_EMAIL:-}" # электронная почта для отпрапвки готовых отчётов
 
 # Доступные параметры для устройства UART
 # Скорость и соответствующий ему размер тестового файла в байтах. При такой конфигурации тест будет длиться примерно 40-50 минут
@@ -285,10 +286,34 @@ for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${bau
     done
 done
 
+declare msg_report
 if [ "$is_test_valid" -eq 1 ]; then
-    echo -e "\n🏁 Тест выполнен успешно! 🏁"
+    msg_report="🏁 Тест выполнен успешно! 🏁"
+    echo -e "\n$msg_report"
 else
-    echo -e "\n⚠️ Тест закончился неудачей на одном или нескольких этапах! Подробности смотреть в tsv-файле. ⚠️"
+    msg_report="⚠️ Тест закончился неудачей на одном или нескольких этапах! Подробности смотреть в tsv-файле. ⚠️"
+    echo -e "\n$msg_report"
 fi
 
-rm -f "$TMP_INPUT_UART_FILE" "$TMP_EXPECTED_UART_FILE"
+rm -rf "$TMP_INPUT_UART_FILE" "$TMP_EXPECTED_UART_FILE" "$TESTS_BIN_FILES_PATH"
+
+
+
+# Проверяем, установлен ли mail и отправляем его по почте
+if ! command -v mail >/dev/null 2>&1; then
+    echo "Предупреждение: утилита mail не установлена ‼️"
+    echo "Файл $UART_TEST_LOG_FILE не будет отправлен по электронной почте ‼️"
+elif [ -z "$EMAIL" ]; then
+    echo "Предупреждение: переменная окружения EMAIL не задана ‼️"
+    echo "Файл $UART_TEST_LOG_FILE не будет отправлен по электронной почте ‼️"
+elif [ ! -f "$UART_TEST_LOG_FILE" ]; then
+    echo "Ошибка: файл $UART_TEST_LOG_FILE не найден ‼️"
+    exit 1
+else
+    if echo "Готовый отчёт. Температура: ${AMBIENT_TEMPERATURE}, UART№ ${BOARD_NAME_1}, UART№ ${BOARD_NAME_2}" \
+        | mail -s "$msg_report" -a "$UART_TEST_LOG_FILE" "$EMAIL"; then
+        echo "Письмо с отчётом успешно отправлено 📩"
+    else
+        echo "Ошибка при отправке письма ‼️"
+    fi
+fi
