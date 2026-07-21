@@ -312,7 +312,7 @@ elif [ ! -f "$UART_TEST_LOG_FILE" ]; then
     exit 1
 else
     if echo "Готовый отчёт. Температура: ${AMBIENT_TEMPERATURE}, UART№ ${BOARD_NAME_1}, UART№ ${BOARD_NAME_2}" \
-        | mail -s "$msg_report" -a "$UART_TEST_LOG_FILE" "$EMAIL"; then
+        | mail -s "$msg_report" -a "$EMAIL"; then
         echo "Письмо с отчётом успешно отправлено 📩"
     else
         echo "Ошибка при отправке письма ‼️"
