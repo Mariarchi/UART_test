@@ -274,7 +274,7 @@ for baud_rate in "${!baud_rates_AND_test_file_size[@]}"; do test_file_size=${bau
                         "$parity_mode_key" \
                         "Отключено" \
                         "$test_result" \
-                        >> "$UART_TEST_LOG_FILE"
+                        | tee -a "$UART_TEST_LOG_FILE"
                 }
 
                 run_test "$path_USB_UART_1" "$path_USB_UART_2" "$BOARD_NAME_1" "$BOARD_NAME_2" "${TESTED_WORDS[$character_size_key]}" "word" "Слово"
