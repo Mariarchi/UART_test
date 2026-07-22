@@ -174,23 +174,25 @@ echo -e "\nОпробование. Перекрёстный тест в прям
 printf "%s" "${TESTED_WORDS[cs8]}" > "$TMP_EXPECTED_UART_FILE"
 echo "Передаю данные: ${TESTED_WORDS[cs8]}"
 if transmit_and_receive "$path_USB_UART_1" "$path_USB_UART_2" "$TMP_EXPECTED_UART_FILE" && cmp -s "$TMP_EXPECTED_UART_FILE" "$TMP_INPUT_UART_FILE"; then
-    echo "УСПЕШНАЯ ПЕРЕДАЧА ДАННЫХ ✔️"
+    printf "Полученные данные: %s \n" "$(cat "$TMP_INPUT_UART_FILE")"
+    echo -e "УСПЕШНАЯ ПЕРЕДАЧА ДАННЫХ ✔️\n"
 else
-    echo "❌❌❌ ОШИБКА ПЕРЕДАЧИ ДАННЫХ. ТЕСТ НЕ ПРОШЁЛ ОПРОБОВАНИЕ ❌❌❌"
+    printf "Полученные данные: %s \n" "$(cat "$TMP_INPUT_UART_FILE")"
+    echo -e "❌❌❌ ОШИБКА ПЕРЕДАЧИ ДАННЫХ. ТЕСТ НЕ ПРОШЁЛ ОПРОБОВАНИЕ ❌❌❌\n"
     exit 1
 fi
-printf "Полученные данные: %s \n" "$(cat "$TMP_INPUT_UART_FILE")"
 
 echo -e "\nОпробование. Перекрёстный тест в обратном направлении:"
 printf "%s" "${TESTED_WORDS[cs8]}" > "$TMP_EXPECTED_UART_FILE"
 echo "Передаю данные: ${TESTED_WORDS[cs8]}"
 if transmit_and_receive "$path_USB_UART_2" "$path_USB_UART_1" "$TMP_EXPECTED_UART_FILE" && cmp -s "$TMP_EXPECTED_UART_FILE" "$TMP_INPUT_UART_FILE"; then
-    echo "УСПЕШНАЯ ПЕРЕДАЧА ДАННЫХ ✔️"
+    printf "Полученные данные: %s \n" "$(cat "$TMP_INPUT_UART_FILE")"
+    echo -e "УСПЕШНАЯ ПЕРЕДАЧА ДАННЫХ ✔️\n"
 else
-    echo "❌❌❌ ОШИБКА ПЕРЕДАЧИ ДАННЫХ. ТЕСТ НЕ ПРОШЁЛ ОПРОБОВАНИЕ ❌❌❌"
+    printf "Полученные данные: %s \n" "$(cat "$TMP_INPUT_UART_FILE")"
+    echo -e "❌❌❌ ОШИБКА ПЕРЕДАЧИ ДАННЫХ. ТЕСТ НЕ ПРОШЁЛ ОПРОБОВАНИЕ ❌❌❌\n"
     exit 1
 fi
-printf "Полученные данные: %s \n" "$(cat "$TMP_INPUT_UART_FILE")"
 
 
 
